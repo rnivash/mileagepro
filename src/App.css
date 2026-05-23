@@ -1,15 +1,3 @@
-.petrol-price-panel {
-  margin-top: 0.9rem;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0;
-  background: rgba(247, 246, 243, 0.75);
-  border-radius: 18px;
-  border: 1px solid rgba(183, 185, 179, 0.85);
-  padding: 0.7rem 1rem;
-}
-
 .nav-button svg,
 .nav-button.danger svg {
   display: inline-block;
@@ -394,6 +382,17 @@ button:active {
   line-height: 1.45;
 }
 
+.callout-button {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  box-shadow: none;
+}
+
+.callout-button:hover {
+  box-shadow: none;
+}
+
 .start-callout {
   background: rgba(224, 90, 25, 0.1);
   color: var(--ink-800);
@@ -407,6 +406,50 @@ button:active {
 .end-callout {
   background: rgba(224, 90, 25, 0.08);
   color: var(--ink-800);
+}
+
+/* Floating error */
+.floating-error {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 1rem;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 9999;
+}
+.floating-error-inner {
+  pointer-events: auto;
+  background: #fff5f5;
+  color: #661010;
+  border: 1px solid #f2c2c2;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  display: inline-flex;
+  gap: 0.75rem;
+  align-items: center;
+  max-width: min(920px, calc(100% - 2rem));
+  width: 100%;
+  font-weight: 700;
+}
+.floating-error span {
+  flex: 1 1 auto;
+}
+.floating-error-close {
+  background: transparent;
+  border: none;
+  color: #661010;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.1rem 0.4rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.floating-error-close:focus,
+.floating-error-close:hover {
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .two-up {

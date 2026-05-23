@@ -6,7 +6,7 @@ import App from './App.jsx';
 
 registerSW({
   onOfflineReady() {
-    console.log('MileagePro is ready for offline use.');
+    console.log('Mileage Guru is ready for offline use.');
   },
 });
 

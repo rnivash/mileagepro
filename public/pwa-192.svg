@@ -5,7 +5,19 @@
       <stop offset="100%" stop-color="#e05a19"/>
     </linearGradient>
   </defs>
-  <rect x="0" y="0" width="192" height="192" rx="42" fill="url(#bg)"/>
-  <circle cx="96" cy="96" r="54" fill="rgba(255,255,255,0.14)"/>
-  <text x="96" y="111" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, sans-serif" font-size="54" font-weight="700">MP</text>
+  <rect width="192" height="192" rx="42" fill="url(#bg)"/>
+  <circle cx="96" cy="96" r="58" fill="#ffffff" opacity="0.14"/>
+  <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="54" y="40" width="56" height="98" rx="12" fill="#ffffff" opacity="0.16" stroke-width="0"/>
+    <rect x="61" y="47" width="48" height="92" rx="12" stroke-width="8"/>
+    <rect x="72" y="58" width="26" height="18" rx="4" stroke-width="6"/>
+    <path d="M109 61h11c6 0 11 5 11 11v39c0 4 3 7 7 7" stroke-width="8"/>
+    <path d="M138 118v-18c0-3 2-6 5-6s5 3 5 6v18" stroke-width="8"/>
+    <path d="M76 101h17" stroke-width="7"/>
+    <path d="M84.5 90v11" stroke-width="7"/>
+    <path d="M76 113h17" stroke-width="7"/>
+    <path d="M70 90l6 6" stroke-width="7"/>
+    <path d="M99 107l-6 6" stroke-width="7"/>
+    <path d="M82 127h16" stroke-width="8"/>
+  </g>
 </svg>
