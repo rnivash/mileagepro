@@ -172,7 +172,11 @@ function HowItWorksPanel({ completionChips }) {
   );
 }
 
-function SummaryPanel({ activeVehicle, latestClosedMileageBookTotals }) {
+function SummaryPanel({
+  activeVehicle,
+  latestClosedMileageBookTotals,
+  activeMileageBookTotals,
+}) {
   return (
     <article className="panel summary-panel">
       <div className="panel-heading">
@@ -186,7 +190,9 @@ function SummaryPanel({ activeVehicle, latestClosedMileageBookTotals }) {
         <div>
           <p className="metric-label">Mileage</p>
           <p className="metric-value">
-            {latestClosedMileageBookTotals
+            {activeMileageBookTotals?.mileage
+              ? activeMileageBookTotals.mileage.toFixed(2)
+              : latestClosedMileageBookTotals
               ? latestClosedMileageBookTotals?.mileage?.toFixed(2)
               : '0.00'}{' '}
             kmpl
@@ -195,18 +201,22 @@ function SummaryPanel({ activeVehicle, latestClosedMileageBookTotals }) {
         <div>
           <p className="metric-label">Distance</p>
           <p className="metric-value">
-            {latestClosedMileageBookTotals
+            {activeMileageBookTotals?.mileage
+              ? activeMileageBookTotals.distance.toFixed(1)
+              : latestClosedMileageBookTotals
               ? latestClosedMileageBookTotals?.distance?.toFixed(1)
-              : '0.0'}{' '}
+              : '0.0'}
             km
           </p>
         </div>
         <div>
           <p className="metric-label">Fuel</p>
           <p className="metric-value">
-            {latestClosedMileageBookTotals
+            {activeMileageBookTotals?.mileage
+              ? activeMileageBookTotals.totalLiters.toFixed(2)
+              : latestClosedMileageBookTotals
               ? latestClosedMileageBookTotals?.totalLiters?.toFixed(2)
-              : '0.00'}{' '}
+              : '0.00'}
             liters
           </p>
         </div>
@@ -662,6 +672,7 @@ function App() {
         <SummaryPanel
           activeVehicle={activeVehicle}
           latestClosedMileageBookTotals={latestClosedMileageBookTotals}
+          activeMileageBookTotals={activeMileageBookTotals}
         />
       )}
 
