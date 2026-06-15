@@ -13,6 +13,7 @@ const createVehicle = (name = 'My Vehicle') => ({
   name,
   mileageBook: null,
   lastMileageBook: null,
+  mileageHistory: [],
 });
 
 const createMileageBook = (startReading) => ({
@@ -20,6 +21,8 @@ const createMileageBook = (startReading) => ({
   status: 'open',
   startReading,
   endReading: null,
+  startDate: new Date().toISOString(),
+  endDate: null,
   fills: [],
 });
 
@@ -52,7 +55,46 @@ const normalizeVehicle = (vehicle) => ({
       : 'My Vehicle',
   mileageBook: vehicle?.mileageBook ?? null,
   lastMileageBook: vehicle?.lastMileageBook ?? null,
+  mileageHistory: Array.isArray(vehicle?.mileageHistory)
+    ? vehicle.mileageHistory
+    : vehicle?.lastMileageBook
+    ? [vehicle.lastMileageBook]
+    : [],
 });
+
+const formatDateTime = (isoDate) => {
+  if (!isoDate) return 'Date unavailable';
+  const parsed = new Date(isoDate);
+  if (Number.isNaN(parsed.getTime())) return 'Date unavailable';
+  return parsed.toLocaleString([], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const formatDateShort = (isoDate) => {
+  if (!isoDate) return 'N/A';
+  const parsed = new Date(isoDate);
+  if (Number.isNaN(parsed.getTime())) return 'N/A';
+  return parsed.toLocaleDateString([], {
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
+const formatDateOnly = (isoDate) => {
+  if (!isoDate) return 'Date unavailable';
+  const parsed = new Date(isoDate);
+  if (Number.isNaN(parsed.getTime())) return 'Date unavailable';
+  return parsed.toLocaleDateString([], {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
 
 const wizardState = {
   StartMeterReading: 1,
@@ -376,6 +418,207 @@ function FloatingError({ message, onClose }) {
   );
 }
 
+function ViewToggle({ viewMode, setViewMode }) {
+  return (
+    <section className="panel view-toggle" aria-label="Page navigation">
+      <button
+        type="button"
+        className={`view-tab ${viewMode === 'tracker' ? 'active' : ''}`}
+        onClick={() => setViewMode('tracker')}
+      >
+        Tracker
+      </button>
+      <button
+        type="button"
+        className={`view-tab ${viewMode === 'history' ? 'active' : ''}`}
+        onClick={() => setViewMode('history')}
+      >
+        History
+      </button>
+    </section>
+  );
+}
+
+function HistoryMileageChart({ entries }) {
+  const chartData = entries
+    .map((entry) => {
+      const totals = getMileageBookTotals(entry);
+      return {
+        id: entry.id,
+        date: entry.endDate ?? entry.startDate,
+        mileage: totals.mileage,
+      };
+    })
+    .filter((point) => Number.isFinite(point.mileage));
+
+  if (chartData.length < 2) {
+    return (
+      <div className="history-chart-empty">
+        Need at least two completed entries with mileage to draw the trend line.
+      </div>
+    );
+  }
+
+  const width = 560;
+  const height = 230;
+  const padding = { top: 16, right: 16, bottom: 40, left: 42 };
+  const minY = Math.min(...chartData.map((point) => point.mileage));
+  const maxY = Math.max(...chartData.map((point) => point.mileage));
+  const yRange = Math.max(maxY - minY, 1);
+
+  const getX = (index) => {
+    if (chartData.length === 1) return width / 2;
+    const usableWidth = width - padding.left - padding.right;
+    return padding.left + (index / (chartData.length - 1)) * usableWidth;
+  };
+
+  const getY = (value) => {
+    const usableHeight = height - padding.top - padding.bottom;
+    return padding.top + ((maxY - value) / yRange) * usableHeight;
+  };
+
+  const polylinePoints = chartData
+    .map((point, index) => `${getX(index)},${getY(point.mileage)}`)
+    .join(' ');
+
+  const yTicks = Array.from({ length: 4 }, (_, index) => {
+    const ratio = index / 3;
+    const value = maxY - ratio * yRange;
+    return {
+      value,
+      y: getY(value),
+    };
+  });
+
+  return (
+    <section className="history-chart-wrap">
+      <div className="history-chart-head">
+        <p className="metric-label">Mileage trend (last 5 entries)</p>
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="history-chart"
+        role="img"
+        aria-label="Line graph of mileage by date for last five entries"
+      >
+        {yTicks.map((tick) => (
+          <g key={`tick-${tick.value}`}>
+            <line
+              x1={padding.left}
+              x2={width - padding.right}
+              y1={tick.y}
+              y2={tick.y}
+              className="history-grid-line"
+            />
+            <text x={8} y={tick.y + 4} className="history-axis-label">
+              {tick.value.toFixed(1)}
+            </text>
+          </g>
+        ))}
+
+        <polyline points={polylinePoints} className="history-line" />
+
+        {chartData.map((point, index) => {
+          const x = getX(index);
+          const y = getY(point.mileage);
+          return (
+            <g key={point.id ?? `${point.date}-${index}`}>
+              <circle cx={x} cy={y} r="4" className="history-point" />
+              <text
+                x={x}
+                y={height - 14}
+                textAnchor="middle"
+                className="history-axis-label"
+              >
+                {formatDateShort(point.date)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </section>
+  );
+}
+
+function HistoryPage({ activeVehicle }) {
+  const historyEntries = [...(activeVehicle?.mileageHistory ?? [])].reverse();
+  const latestFiveEntries = [...(activeVehicle?.mileageHistory ?? [])].slice(
+    -5
+  );
+
+  return (
+    <section className="panel">
+      <div className="panel-heading">
+        <div>
+          <p className="section-label">History</p>
+          <h2>{activeVehicle?.name ?? 'No vehicle selected'}</h2>
+        </div>
+      </div>
+
+      {latestFiveEntries.length ? (
+        <HistoryMileageChart entries={latestFiveEntries} />
+      ) : null}
+
+      {historyEntries.length ? (
+        <div className="history-list">
+          {historyEntries.map((entry, index) => {
+            const totals = getMileageBookTotals(entry);
+            const totalFilled = totals.totalLiters;
+
+            return (
+              <article
+                className="history-card"
+                key={entry.id ?? `${activeVehicle?.id}-${index}`}
+              >
+                <div className="history-head">
+                  <strong>Cycle {historyEntries.length - index}</strong>
+                  <span className="status-pill subtle">
+                    Closed: {formatDateOnly(entry.endDate)}
+                  </span>
+                </div>
+
+                <div className="history-result">
+                  <div>
+                    <p className="metric-label">Start meter</p>
+                    <strong>
+                      {Number(entry.startReading ?? 0).toFixed(1)} km
+                    </strong>
+                  </div>
+                  <div>
+                    <p className="metric-label">Fuel filled</p>
+                    <strong>{totalFilled.toFixed(2)} liters</strong>
+                  </div>
+                  <div>
+                    <p className="metric-label">End meter</p>
+                    <strong>
+                      {Number(entry.endReading ?? 0).toFixed(1)} km
+                    </strong>
+                  </div>
+                  <div>
+                    <p className="metric-label">Mileage</p>
+                    <strong>
+                      {totals.mileage ? totals.mileage.toFixed(2) : '0.00'} kmpl
+                    </strong>
+                    <p>
+                      Distance:{' '}
+                      {totals.distance ? totals.distance.toFixed(1) : '0.0'} km
+                    </p>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="empty-state">
+          No historical mileage cycles for this vehicle yet. Close your first
+          MileageBook to see start reading, fuel fills, and end reading here.
+        </p>
+      )}
+    </section>
+  );
+}
+
 function App() {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [vehicles, setVehicles] = useState(() => {
@@ -401,6 +644,7 @@ function App() {
   const [endReading, setEndReading] = useState('');
   const [globalError, setGlobalError] = useState('');
   const [wizardStep, setWizardStep] = useState(wizardState.StartMeterReading);
+  const [viewMode, setViewMode] = useState('tracker');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(vehicles));
@@ -593,21 +837,24 @@ function App() {
       return;
     }
 
+    const closedMileageBook = {
+      ...mileageBook,
+      status: 'closed',
+      endReading: savedReading,
+      endDate: new Date().toISOString(),
+    };
+
     setVehicles((current) =>
       current.map((vehicle) =>
         vehicle.id === activeVehicle.id
           ? {
               ...vehicle,
-              mileageBook: {
-                ...vehicle.mileageBook,
-                status: 'closed',
-                endReading: savedReading,
-              },
-              lastMileageBook: {
-                ...vehicle.mileageBook,
-                status: 'closed',
-                endReading: savedReading,
-              },
+              mileageBook: closedMileageBook,
+              lastMileageBook: closedMileageBook,
+              mileageHistory: [
+                ...(vehicle.mileageHistory ?? []),
+                closedMileageBook,
+              ],
             }
           : vehicle
       )
@@ -658,6 +905,8 @@ function App() {
         showAddVehicle={showAddVehicle}
       />
 
+      <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+
       {showAddVehicle && (
         <AddVehiclePanel
           vehicleName={vehicleName}
@@ -666,51 +915,57 @@ function App() {
         />
       )}
 
-      {!hasMileageBookEntries ? (
+      {viewMode === 'tracker' && !hasMileageBookEntries ? (
         <HowItWorksPanel completionChips={completionChips} />
-      ) : (
+      ) : viewMode === 'tracker' ? (
         <SummaryPanel
           activeVehicle={activeVehicle}
           latestClosedMileageBookTotals={latestClosedMileageBookTotals}
           activeMileageBookTotals={activeMileageBookTotals}
         />
-      )}
+      ) : null}
 
-      <section className="grid">
-        <article className="panel form-panel">
-          <div className="panel-heading">
-            <p className="section-label">Point 1</p>
-          </div>
+      {viewMode === 'history' ? (
+        <HistoryPage activeVehicle={activeVehicle} />
+      ) : null}
 
-          <StartSection
-            mileageBook={mileageBook}
-            startMileageBook={startMileageBook}
-            startReading={startReading}
-            setStartReading={setStartReading}
-            wizardStep={wizardStep}
-          />
+      {viewMode === 'tracker' ? (
+        <section className="grid">
+          <article className="panel form-panel">
+            <div className="panel-heading">
+              <p className="section-label">Point 1</p>
+            </div>
 
-          <FuelSection
-            activeMileageBookTotals={activeMileageBookTotals}
-            addFill={addFill}
-            fillLiters={fillLiters}
-            setFillLiters={setFillLiters}
-            setWizardStep={setWizardStep}
-            wizardStep={wizardStep}
-          />
+            <StartSection
+              mileageBook={mileageBook}
+              startMileageBook={startMileageBook}
+              startReading={startReading}
+              setStartReading={setStartReading}
+              wizardStep={wizardStep}
+            />
 
-          <EndSection
-            closeMileageBook={closeMileageBook}
-            endReading={endReading}
-            hasSavedEndReading={hasSavedEndReading}
-            mileageBook={mileageBook}
-            saveEndReading={saveEndReading}
-            setEndReading={setEndReading}
-            setWizardStep={setWizardStep}
-            wizardStep={wizardStep}
-          />
-        </article>
-      </section>
+            <FuelSection
+              activeMileageBookTotals={activeMileageBookTotals}
+              addFill={addFill}
+              fillLiters={fillLiters}
+              setFillLiters={setFillLiters}
+              setWizardStep={setWizardStep}
+              wizardStep={wizardStep}
+            />
+
+            <EndSection
+              closeMileageBook={closeMileageBook}
+              endReading={endReading}
+              hasSavedEndReading={hasSavedEndReading}
+              mileageBook={mileageBook}
+              saveEndReading={saveEndReading}
+              setEndReading={setEndReading}
+              setWizardStep={setWizardStep}
+              wizardStep={wizardStep}
+            />
+          </article>
+        </section>
+      ) : null}
       <FloatingError message={globalError} onClose={() => setGlobalError('')} />
     </main>
   );
